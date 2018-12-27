@@ -1,0 +1,13 @@
+name: consumption_staton_road
+title: consumption_staton_road
+username:
+account: yadbor
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 622518
+bundleId: 1782801
+url: https://yadbor.shinyapps.io/consumption_staton_road/
+when: 1545745783.73115
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: consumption_07.r|consumption.Rmd|efficiency_08.r|IDCJAC0003_009192_Data1.csv|pvwatts_monthly.csv|use netCDF (fragment).R|use_from_gdocs.02.r
