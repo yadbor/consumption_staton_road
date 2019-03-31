@@ -1,29 +1,23 @@
 library(shiny)
-library(ggplot2)
+library(googlesheets)
 
-dataset <- diamonds
-
-fluidPage(
-  
-  titlePanel("Diamonds Explorer"),
-  
-  sidebarPanel(
-    
-    sliderInput('sampleSize', 'Sample Size', min=1, max=nrow(dataset),
-                value=min(1000, nrow(dataset)), step=500, round=0),
-    
-    selectInput('x', 'X', names(dataset)),
-    selectInput('y', 'Y', names(dataset), names(dataset)[[2]]),
-    selectInput('color', 'Color', c('None', names(dataset))),
-    
-    checkboxInput('jitter', 'Jitter'),
-    checkboxInput('smooth', 'Smooth'),
-    
-    selectInput('facet_row', 'Facet Row', c(None='.', names(dataset))),
-    selectInput('facet_col', 'Facet Column', c(None='.', names(dataset)))
-  ),
-  
-  mainPanel(
-    plotOutput('plot')
-  )
-)
+shinyUI(
+  fluidPage(
+    titlePanel("Read a public Google Sheet"),
+    sidebarLayout(
+      sidebarPanel(
+        h6(paste("This app is hard-wired to read a single, public Google",
+                 "Sheet.")),
+        h6("Visit the Sheet in the browser:", a("HERE", href = gs_gap_url(),
+                                                target="_blank")),
+        h6(paste("Since there is no user input, it defaults to reading",
+                 "the first worksheet in the spreadsheet.")),
+        h6(a("Click Here to See Code on Github",
+             href="https://github.com/jennybc/googlesheets/tree/master/inst/shiny-examples/01_read-public-sheet",
+             target="_blank"))
+      ),
+      mainPanel(
+        DT::dataTableOutput("the_data")
+      )
+    )
+  ))
