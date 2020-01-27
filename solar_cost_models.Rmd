@@ -46,7 +46,7 @@ gen_perth <- data.table(size = c(2,3,4,5), avg_daily = c(8.8,13.2,17.6,22))
 
 # data from analysis daily results recorded in consumption.Rmd
 # calculated with
-# quantile(daily$made, probs = c(0.05, 0.95), na.rm = TRUE)))
+# quantile(daily$made, probs = c(0.05, 0.95), na.rm = TRUE)
 
 our_system <- data.table(size = 2.8, CI_lo = 3.395238, CI_hi = 8.714286)
 
