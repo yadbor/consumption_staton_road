@@ -1,0 +1,80 @@
+---
+title: "Untitled"
+author: "Robert Day"
+date: "27/01/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(data.table)
+library(ggplot2)
+```
+
+## New Solar Modelling
+
+Folowing removal of 40 cent/unit feed in tariff, should we upgrade our solar power system?
+
+```{r parameters}
+syn <- list(
+  A1 = 26.2026,       # cents per unit (kW.hr)   
+  supply = 93.9330,   # cents per day
+  natural = 4.8466,   # cents per unit (100% natural)
+  renewable = 7.1350  # cents per unit (paid to us)
+)
+
+gst = 1.10  # 10% GST
+current = 2.8 # kW.hr
+proposed = 6  # kW.hr
+
+```
+
+```{r systems}
+tbl <- data.table(name = c("current", "", ""), 
+                  size = c(2.8, 3.5, 10), 
+                  cost = c(0, 5000, 10000)
+                  )
+
+# suggested average generation per system size in Perth from
+# https://www.solarchoice.net.au/blog/solar-power-system-deals-perth-wa
+generation <- fread("solarchoice_perth.csv")
+generation[, c('min_daily', 'max_daily') := lapply(tstrsplit(avg_daily, "-"), as.numeric)]
+
+# suggested generation for Perth from
+# https://www.solargain.com.au/which-solar-energy-system-is-right-for-me
+gen_perth <- data.table(size = c(2,3,4,5), avg_daily = c(8.8,13.2,17.6,22))
+
+# data from analysis daily results recorded in consumption.Rmd
+# calculated with
+# quantile(daily$made, probs = c(0.05, 0.95), na.rm = TRUE)))
+
+our_system <- data.table(size = 2.8, CI_lo = 3.395238, CI_hi = 8.714286)
+
+# plot all the data on the same graph
+
+ggplot(generation) + aes(x = size) + 
+  geom_ribbon(aes(ymin=min_daily, ymax = max_daily), fill = 'cyan', alpha = 0.5) +
+  geom_point(aes(y=min_daily)) + geom_point(aes(y=max_daily)) + 
+  geom_linerange(data = our_system, aes(ymin = CI_lo, ymax = CI_hi), colour = 'blue') + 
+  geom_point(data = gen_perth, aes(x=size, y = avg_daily), colour = 'red')
+
+```
+
+```{r model}
+# assume generation scales with the size of the system,
+# so if we double the size it should make double the power
+new_sold <- (proposed/current) * units_sold
+
+income <- syn$renewable * units_sold 
+new_income <- syn$renewable * new_sold
+unit_cost <- gst * (syn$A1 + syn$natural) 
+
+cost <- unit_cost * (units_bought - units_sold)
+new_cost <- unit_cost * (units_bought - new_sold)
+
+savings = (proposed_income - income)
+savings = syn$renewable * (proposed_made - made)
+
+rate = 0.05 # 5% interest is about all we get at the moment
+opportunity_cost = rate * proposed_capital
+```
