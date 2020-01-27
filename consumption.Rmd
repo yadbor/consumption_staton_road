@@ -41,7 +41,7 @@ meter.readings <- fread(data.source[[use.source]], showProgress = FALSE)
 
 # some readings are incomplete, if we miss a meter or loose the readings
 # for simplicity, just drop those readings
-meter.readings <- na.omit(meter.readings)
+#meter.readings <- na.omit(meter.readings)
 
 # fix any odd date formats.
 # google docs occasionally gives two digit years, but always in d m y order for my data
