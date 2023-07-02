@@ -54,10 +54,12 @@ insolation.BOM <- fread("IDCJAC0003_009192_Data1.csv", na.strings="null")
 # use all lowercase convention for year & month to match other data tables
 setnames(insolation.BOM, c("product","station","year","month", "MJ"))
 insolation.BOM[, kw.hr := MJ*MJ.to.kwhr]
-# and use month names rather than integers, like the other tables
-insolation.BOM[, month:=month.abb[month]]
+IB <- insolation.BOM
 
-insolation <- insolation.BOM
+# and use month names rather than integers, like the other tables
+insolation <- copy(insolation.BOM)
+insolation[, mn := factor(month.abb[month], levels = month.abb)]
+
 
 # insolation plots
 i.plot.01 <- ggplot(insolation) + aes(x=month, y=kw.hr)
@@ -84,8 +86,13 @@ i.plot.07 <- i.plot.06 + geom_point(data=daily,  aes(x=month(date), y=made)) +
 # if the monthly data is not already loaded, create is
 if (!exists("monthly")) source("consumption_08.r")
 
+made <- monthly.l[variable == "made" & ! is.na(monthly), ]
+# give it month names as a factor for better ordering like insolation
+made[, mn := factor(month.abb[month], levels = month.abb)]
+
 # look at output vs insolation to estimate the efficiency of our system
-comp <- monthly[insolation, on=c("year","month")]
+#comp <- monthly[insolation, on=c("year","month")][!is.na(monthly), ]
+comp <- made[insolation, on=c("year","month")][!is.na(monthly), ]
 
 # start from when solar panels were installed (NA before that)
 comp <- comp[complete.cases(comp)]
@@ -99,14 +106,14 @@ ggplot(comp)+aes(x=kw.hr, y=made)+geom_point()+geom_smooth(span=1)
 
 # make a segmented plot
 library(segmented)
-linear.model <- lm(made~kw.hr, data=comp)
+linear.model <- lm(monthly~kw.hr, data=comp)
 segmented.model <- segmented(linear.model, seg.Z=~kw.hr)
 
 # now use the segmented model to make some data points to plot
 comp[, fit:= predict(segmented.model)]
 comp[, group:=segmented.model$id.group]
-seg.plot <- ggplot(comp)+aes(x=kw.hr, y=made)+geom_point()+geom_smooth(span=1)+geom_line(aes(y=fit, group=group), colour="red")+theme(legend.position="none")
-#print(seg.plot)
+seg.plot <- ggplot(comp)+aes(x=kw.hr, y=monthly)+geom_point(aes(colour = month))+geom_smooth(span=1)+geom_line(aes(y=fit, group=group), colour="red")+theme(legend.position="none")
+print(seg.plot)
 
 # extract the breakpoint(s) and 95% CI(s)
 breakp <- data.frame(confint(segmented.model))

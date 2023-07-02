@@ -18,7 +18,7 @@ library(lubridate)
 ########################################################
 
 data.source <- list(local = "meter.readings.csv",
-                    g.doc =  "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ0dz7rlUoZDa4z1nwXtQFwwVli9flGD8ZsgaNgSTjG5YrD09q0iqaZbSMe04aWMkFhCSboSxwz3Fxc/pub?gid=0&single=true&output=csv"
+                    g.doc =  "1YSv-EKJq7lm0wUCAOsnJ9y7OCkmaF2-gNEx6crz9diA"
                     )
 
 use.source <- "g.doc"
@@ -37,12 +37,21 @@ use.source <- "g.doc"
 
 
 ```{r}
-meter.readings <- fread(data.source[[use.source]], showProgress = FALSE)
+#
+if (use.source == "g.doc") {
+  # Google Sheets version
+  readings <- googlesheets4::read_sheet(data.source[[use.source]])
+  meter.readings <- as.data.table(readings)
+} else {
+  meter.readings <- fread(data.source[[use.source]], showProgress = FALSE)
+}
 
+
+## GS4 gets the dates right so no need for this
 # fix any odd date formats.
 # google docs occasionally gives two digit years, but always in d m y order for my data
-meter.readings$date <-as.Date(parse_date_time(x = meter.readings$date, 
-                                              orders = c("d m y")), tz = "UTC")
+# meter.readings$date <-as.Date(parse_date_time(x = meter.readings$date, 
+#                                              orders = c("d m y")), tz = "UTC")
 
 # work out how much we actually used (we sell some of what we make and use all that we buy)
 meter.readings[, used := (made - sold)+ bought]
@@ -88,7 +97,7 @@ daily[date == "2013-04-13", water := NA] # had a leak
 daily[date == "2010-11-07", water := NA] # broken tap timer
 daily[date == "2017-12-23", water := NA] # tap left on trees overnight
 
-# quantities that make sense to plot monthly put into long format for ggplotting
+# quantities that make sense to plot monthly put into long format for plotting
 daily.l <- melt(daily, id.vars = "date", measure.vars = measure.cols)
 # add month & year for plotting
 daily.l[, c("year", "month") := list(year(date), month(date))]
@@ -102,7 +111,7 @@ daily.l[, variable:= factor(variable,
                                        "made", "sold", "bought"))
         ]
 ```
-```{r plot_readings, echo=FALSE, message=FALSE, warning=FALSE}
+```{r plot_readings, echo=FALSE, message=FALSE, warning=FALSE, out.width = "100%"}
 # plot all the data just over time
 raw <- ggplot(daily.l) + 
                 aes(x = date, y = value) + 
@@ -111,7 +120,7 @@ raw <- ggplot(daily.l) +
                 labs(title = "weekly readings", x = "time", y = "value per day")
 print(raw)
 ```
-```{r plot_seasonal, echo=FALSE, message=FALSE, warning=FALSE}
+```{r plot_seasonal, echo=FALSE, message=FALSE, warning=FALSE, out.width="100%"}
 # plot by month to show the seasonal variation
 seasonal <- ggplot(daily.l) + 
                   aes(x = month(date, label = TRUE, abbr = TRUE), 
@@ -134,7 +143,7 @@ monthly.l <- daily.l[, .(monthly = mean(value, na.rm = TRUE),
 monthly.means <- monthly.l[, .(mean = mean(monthly, na.rm = TRUE)),
                            by = "variable,month"]
 ```
-```{r message=FALSE, warning=FALSE}
+```{r message=FALSE, warning=FALSE, out.width="100%"}
 # anomaly is each monthly average - the average for that month over the whole data set
 # use a right join to bring in the matching monthly mean data for each variable
 anomaly.l <- monthly.l[monthly.means, .(variable, 
