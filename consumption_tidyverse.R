@@ -28,18 +28,28 @@ readings <- googlesheets4::read_sheet(sheet_id, sheet = "Sheet1")
 readings <- readings %>% select(!starts_with("chk_"))
 
 # The water meter was changed, restarting the readings.
-# Find the change by looking for a downwards change in meter reading.
-meter_change <- which(c(diff(readings$water), 0)<0)
-last_reading <- readings$water[meter_change]
-
+# Find the meter change by looking for a downwards change in meter reading.
+change_row <- which(readings$water < lag(readings$water)) - 1
+# Find the last reading on the old meter, to add to subsequent readings.
+change_offset <- readings[change_row, ] %>% pull(water)
 # Add the last reading on the old meter to all subsequent readings.
-readings <- readings %>% 
-  mutate(water = ifelse(row_number() > meter_change, water + last_reading, water)
-         )
+readings <-
+  readings %>% mutate(water = ifelse(row_number() > change_row,
+                                     water + change_offset,
+                                     water)
+                      )
 
 # Calcuate the total electricity used (solar used on site plus bought from grid)
 readings <- readings %>% 
   mutate(used = (made - sold) + bought)
+
+# Remove readings with known problems, identified in the notes column
+readings <- readings %>% 
+  filter(!stringr::str_detect(notes, "PROBLEM"))
+  # Did not record electricity until after installing solar panels, so there 
+  # is about a year with only gas & water readings.
+  # For clarity in plotting only use data where we have all meters.  
+readings <- readings %>% tidyr::drop_na(water, gas, made, bought, sold, people)
 
 # Find the number of days between readings and calculate daily amounts
 daily <- readings %>% 
@@ -55,7 +65,7 @@ daily <- readings %>%
 daily <- daily %>% filter(!stringr::str_detect(notes, "PROBLEM"))
 
 # Did not record electricity until after installing solar panels, so there 
-# is about a year with only gas & watr readings.
+# is about a year with only gas & water readings.
 # For clarity in plotting only use data where we have all meters.
 NonNAindex <- which(!is.na(readings$made))
 first_solar <- min(NonNAindex)
