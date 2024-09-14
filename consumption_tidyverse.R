@@ -27,6 +27,16 @@ readings <- googlesheets4::read_sheet(sheet_id, sheet = "Sheet1")
 
 readings <- readings %>% select(!starts_with("chk_"))
 
+# Remove readings with known problems, identified in the notes column
+readings <- readings %>% 
+  filter(!stringr::str_detect(notes, "PROBLEM"))
+
+# We didn't record electricity until after installing solar panels, so there is 
+# about a year with only gas & water readings. There are also some rows in the 
+# online sheet without meter readings, as place holders in case we can find 
+# those readings. For clarity only use data with all meters (so drop the first year).
+readings <- readings %>% tidyr::drop_na(water, gas, made, bought, sold)
+
 # There have been changes to both the water and gas meters, each of which
 # restarted the reading on that meter. Fix these by finding the last reading on
 # the old meter and adding to the first reading on the new meter.
@@ -44,23 +54,12 @@ fix_gaps <- function(v) {
 
 # The new fix_gaps procedure will not change an existing monotonic sequence, so
 # could be applied to any sequence of readings, but only water & gas changed.
-
 readings <- readings |>
-  mutate(wate = fix_gaps(water), gas = fix_gaps(gas))
-
-
+  mutate(water = fix_gaps(water), gas = fix_gaps(gas))
 
 # Calculate the total electricity used (solar used on site plus bought from grid)
 readings <- readings %>% 
   mutate(used = (made - sold) + bought)
-
-# Remove readings with known problems, identified in the notes column
-readings <- readings %>% 
-  filter(!stringr::str_detect(notes, "PROBLEM"))
-  # Did not record electricity until after installing solar panels, so there 
-  # is about a year with only gas & water readings.
-  # For clarity in plotting only use data where we have all meters.  
-readings <- readings %>% tidyr::drop_na(water, gas, made, bought, sold, people)
 
 # Find the number of days between readings and calculate daily amounts
 daily <- readings %>% 
@@ -71,17 +70,6 @@ daily <- readings %>%
           people = people[-1],
           notes = notes[-1]
   )
-
-# Remove readings with known problems, identified in the notes column
-daily <- daily %>% filter(!stringr::str_detect(notes, "PROBLEM"))
-
-# Did not record electricity until after installing solar panels, so there 
-# is about a year with only gas & water readings.
-# For clarity in plotting only use data where we have all meters.
-NonNAindex <- which(!is.na(readings$made))
-first_solar <- min(NonNAindex)
-
-daily <- daily %>% slice(-(1:first_solar))
 
 # Rearrange into long form for plotting
 daily_long <- daily %>% 
@@ -110,7 +98,7 @@ season_plot <- electricity %>% ggplot() +
       y = reading
       ) + 
   geom_point(aes(colour = year(date))) + 
-  geom_smooth(aes(x = month(date)), span = 0.4) +
+  geom_smooth(aes(x = month(date)), span = 0.2) +
   facet_wrap(~meter) + 
   labs(title = "seasonal variation", x = "month", y = "value")
 print(season_plot)
