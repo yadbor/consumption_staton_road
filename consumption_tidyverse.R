@@ -27,19 +27,30 @@ readings <- googlesheets4::read_sheet(sheet_id, sheet = "Sheet1")
 
 readings <- readings %>% select(!starts_with("chk_"))
 
-# The water meter was changed, restarting the readings.
-# Find the meter change by looking for a downwards change in meter reading.
-change_row <- which(readings$water < lag(readings$water)) - 1
-# Find the last reading on the old meter, to add to subsequent readings.
-change_offset <- readings[change_row, ] %>% pull(water)
-# Add the last reading on the old meter to all subsequent readings.
-readings <-
-  readings %>% mutate(water = ifelse(row_number() > change_row,
-                                     water + change_offset,
-                                     water)
-                      )
+# There have been changes to both the water and gas meters, each of which
+# restarted the reading on that meter. Fix these by finding the last reading on
+# the old meter and adding to the first reading on the new meter.
 
-# Calcuate the total electricity used (solar used on site plus bought from grid)
+# Fix gaps in a vector of readings that are expected to increase monotonically.
+# Take the difference of the sequence, and when it goes backwards (diff < 0)
+# replace those values with the current meter reading, which is the diff from
+# the new meter starting at zero to the first reading of the new meter.
+# Then add up all of the fixed readings to give the correct monotonic sequence.
+fix_gaps <- function(v) {
+  d = c(v[1], diff(v))
+  res <- cumsum(if_else(d<0, v, d))
+  return(res)
+}
+
+# The new fix_gaps procedure will not change an existing monotonic sequence, so
+# could be applied to any sequence of readings, but only water & gas changed.
+
+readings <- readings |>
+  mutate(wate = fix_gaps(water), gas = fix_gaps(gas))
+
+
+
+# Calculate the total electricity used (solar used on site plus bought from grid)
 readings <- readings %>% 
   mutate(used = (made - sold) + bought)
 
